@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
   runApp(const TranslatorApp());
@@ -16,8 +17,10 @@ class TranslatorApp extends StatelessWidget {
       title: 'Nindogo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        textTheme: GoogleFonts.notoSansJpTextTheme(),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        textTheme: GoogleFonts.poppinsTextTheme(),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
       ),
       home: const SplashScreen(),
     );
@@ -63,7 +66,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: FadeTransition(
           opacity: _animation,
@@ -72,7 +74,7 @@ class _SplashScreenState extends State<SplashScreen>
               const Spacer(),
               Center(
                 child: Image.asset(
-                  'assets/images/nindogofix.png',
+                  'assets/images/nindogox.png',
                   width: 180,
                   height: 180,
                 ),
@@ -110,6 +112,8 @@ class _TranslatorHomeState extends State<TranslatorHome> {
   String sourceFlag = '🇮🇩';
   String targetFlag = '🇯🇵';
   bool isLoading = false;
+  bool isPlayingAudio = false;
+  final player = AudioPlayer();
 
   void swapLanguage() {
     setState(() {
@@ -128,7 +132,9 @@ class _TranslatorHomeState extends State<TranslatorHome> {
   String handleTimeInput(String input) {
     if (input.contains(":")) {
       final parts = input.split(":");
-      if (parts.length == 2 && int.tryParse(parts[0]) != null && int.tryParse(parts[1]) != null) {
+      if (parts.length == 2 &&
+          int.tryParse(parts[0]) != null &&
+          int.tryParse(parts[1]) != null) {
         return input;
       }
     }
@@ -153,7 +159,7 @@ class _TranslatorHomeState extends State<TranslatorHome> {
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       setState(() {
-        translatedText = data['translated_text'] ?? 'Gagal menerjemahkan';
+        translatedText = data['translated_text'] ?? 'Failed to translate';
       });
     } catch (e) {
       setState(() => translatedText = 'Error: $e');
@@ -162,76 +168,127 @@ class _TranslatorHomeState extends State<TranslatorHome> {
     }
   }
 
+  Future<void> playTTS() async {
+    if (translatedText.trim().isEmpty) return;
+
+    setState(() => isPlayingAudio = true);
+    try {
+      final response = await http.post(
+        Uri.parse('https://transapi-2sgz.onrender.com/speak'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'text': translatedText,
+          'src': targetLang,
+          'dest': targetLang,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        await player.play(BytesSource(bytes));
+      } else {
+        debugPrint('Failed to play audio: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error saat play TTS: $e');
+    } finally {
+      setState(() => isPlayingAudio = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.blue[800],
-        title: const Text('Nindogo'),
-        elevation: 0,
+        backgroundColor: Color.fromARGB(255, 129, 77, 250),
+        elevation: 4,
+        shadowColor: Colors.indigo,
+        title: Image.asset('assets/images/iconlogo.png', height: 38),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.blue,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(sourceFlag, style: const TextStyle(fontSize: 28)),
-                    IconButton(
-                      icon: const Icon(Icons.compare_arrows, color: Colors.white),
-                      onPressed: swapLanguage,
-                    ),
-                    Text(targetFlag, style: const TextStyle(fontSize: 28)),
-                  ],
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(sourceFlag, style: const TextStyle(fontSize: 30)),
+                IconButton(
+                  icon: const Icon(Icons.compare_arrows, size: 28),
+                  onPressed: swapLanguage,
+                ),
+                Text(targetFlag, style: const TextStyle(fontSize: 30)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              maxLines: null,
+              decoration: InputDecoration(
+                hintText: 'Input text here...',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      decoration: const InputDecoration(
-                        hintText: 'Insert text',
-                        border: OutlineInputBorder(),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: isLoading ? null : translateAndAnalyze,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 129, 77, 250),
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+              ),
+              child: isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Translate', style: TextStyle(fontSize: 16, color: Colors.white)),
+            ),
+            const SizedBox(height: 24),
+            if (translatedText.isNotEmpty)
+              AnimatedOpacity(
+                opacity: 1.0,
+                duration: const Duration(milliseconds: 500),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.indigo.shade100),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : translateAndAnalyze,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        translatedText,
+                        style: const TextStyle(fontSize: 20),
+                        textAlign: TextAlign.center,
                       ),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Send', style: TextStyle(fontSize: 16)),
-                    ),
-                    const SizedBox(height: 24),
-                    if (translatedText.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          translatedText,
-                          style: const TextStyle(fontSize: 18),
-                        ),
+                      const SizedBox(height: 10),
+                      FloatingActionButton(
+                        onPressed: isPlayingAudio ? null : playTTS,
+                        backgroundColor: const Color.fromARGB(255, 129, 77, 250),
+                        child: isPlayingAudio
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Icon(Icons.volume_up, color: Colors.white),
                       )
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              )
+          ],
         ),
       ),
     );
