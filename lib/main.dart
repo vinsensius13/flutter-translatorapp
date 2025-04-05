@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const Spacer(),
               Text(
-                '© 2025 akuma13',
+                '2025 © akuma13',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: Colors.grey,
@@ -117,19 +117,21 @@ class _TranslatorHomeState extends State<TranslatorHome> {
   final player = AudioPlayer();
 
   void swapLanguage() {
-    setState(() {
-      final tempLang = sourceLang;
-      sourceLang = targetLang;
-      targetLang = tempLang;
+  setState(() {
 
-      sourceFlag = sourceLang == 'id' ? '🇮🇩' : '🇯🇵';
-      targetFlag = targetLang == 'ja' ? '🇯🇵' : '🇮🇩';
+    final tempLang = sourceLang;
+    sourceLang = targetLang;
+    targetLang = tempLang;
 
-      translatedText = '';
-      _controller.clear();
-    });
-  }
+    sourceFlag = sourceLang == 'id' ? '🇮🇩' : '🇯🇵';
+    targetFlag = targetLang == 'ja' ? '🇯🇵' : '🇮🇩';
 
+    final tempText = _controller.text;
+    _controller.text = translatedText;
+    translatedText = tempText;
+  });
+  translateAndAnalyze();
+}
   String handleTimeInput(String input) {
     if (input.contains(":")) {
       final parts = input.split(":");
