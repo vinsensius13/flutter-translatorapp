@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const TranslatorApp());
@@ -81,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const Spacer(),
               Text(
-                '© 2025 vinsensius13',
+                '© 2025 akuma13',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: Colors.grey,
@@ -200,7 +201,7 @@ class _TranslatorHomeState extends State<TranslatorHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 129, 77, 250),
+        backgroundColor: const Color.fromARGB(255, 129, 77, 250),
         elevation: 4,
         shadowColor: Colors.indigo,
         title: Image.asset('assets/images/iconlogo.png', height: 38),
@@ -275,14 +276,31 @@ class _TranslatorHomeState extends State<TranslatorHome> {
                         style: const TextStyle(fontSize: 20),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 10),
-                      FloatingActionButton(
-                        onPressed: isPlayingAudio ? null : playTTS,
-                        backgroundColor: const Color.fromARGB(255, 129, 77, 250),
-                        child: isPlayingAudio
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
-                            : const Icon(Icons.volume_up, color: Colors.white),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FloatingActionButton(
+                            heroTag: 'ttsBtn',
+                            onPressed: isPlayingAudio ? null : playTTS,
+                            backgroundColor: const Color.fromARGB(255, 129, 77, 250),
+                            child: isPlayingAudio
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Icon(Icons.volume_up, color: Colors.white),
+                          ),
+                          const SizedBox(width: 16),
+                          FloatingActionButton(
+                            heroTag: 'copyBtn',
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: translatedText));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Copied to clipboard!')),
+                              );
+                            },
+                            backgroundColor: const Color.fromARGB(255, 129, 77, 250),
+                            child: const Icon(Icons.copy, color: Colors.white),
+                          ),
+                        ],
                       )
                     ],
                   ),
